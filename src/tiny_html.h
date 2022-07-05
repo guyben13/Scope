@@ -49,6 +49,9 @@ struct HtmlNode {
       increase_indent = false;
       tag.pop_back();
     }
+    if (tag.empty()) {
+      increase_indent = false;
+    }
   }
 
   static HtmlNode create_text(std::string text) {

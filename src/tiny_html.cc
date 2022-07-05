@@ -44,9 +44,14 @@ void HtmlNode::print_me_as_group(std::ostream& out, Indentation indent) const {
 }
 
 void HtmlNode::print_me(std::ostream& out, Indentation indent) const {
+  Indentation next_indent = indent;
+  if (!children_inline && increase_indent) {
+    next_indent = next_indent + 1;
+  }
   if (tag.empty()) {
     if (attributes.empty()) {
-      print_me_as_group(out, indent);
+      out << (next_indent - indent.indent);
+      print_me_as_group(out, next_indent);
       return;
     }
     if (attributes.size() == 1) {
@@ -74,10 +79,6 @@ void HtmlNode::print_me(std::ostream& out, Indentation indent) const {
     return;
   }
   out << '>';
-  Indentation next_indent = indent;
-  if (!children_inline && increase_indent) {
-    next_indent = next_indent + 1;
-  }
   if (!children_inline) {
     out << '\n' << next_indent;
   }

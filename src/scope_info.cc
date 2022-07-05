@@ -8,12 +8,6 @@
 
 namespace scope {
 
-#define CHECK(x)                                                           \
-  if (!(x)) {                                                              \
-    std::cerr << __FILE__ << ":" << __LINE__ << ": ERROR! " << #x << "\n"; \
-    exit(0);                                                               \
-  }
-
 void ScopeInfo::fix_self_time_recursive() {
   double children_time = 0.;
   for (ScopeInfo& child : children) {
@@ -109,7 +103,7 @@ std::string loc_simple_str(const Location& loc) {
     }
   }
   {
-    size_t last_colon = res.rfind(':');
+    size_t last_colon = res.find_last_of(": ");
     if (last_colon != std::string::npos) {
       res = res.substr(last_colon);
     }
@@ -186,12 +180,12 @@ HtmlNode DocumentBuilderBase::description_of(
       percent_str(scope_info.timer.self_time, total_time) + " self";
   std::string time = sec_to_str(scope_info.timer.total_time);
   std::string time_self = sec_to_str(scope_info.timer.self_time) + " self";
-  std::string count =
-      "for " + num_with_commas(scope_info.timer.count) + " times";
+  std::string count = "for " + num_with_commas(scope_info.timer.count) +
+                      (scope_info.timer.count == 1 ? " count" : " counts");
   std::string time_per_call =
       rate_str(scope_info.timer.total_time, scope_info.timer.count);
   return HtmlNode{
-      "",
+      "|",
       {},
       simple_span(
           time_percent, StyleType::STYLE_TIME_PERCENT, time_percent_self),
@@ -389,6 +383,42 @@ struct MdBuilder : DocumentBuilderBase {
   }
 };
 
+struct StrBuilder : DocumentBuilderBase {
+  virtual HtmlNode simple_span(
+      std::string content,
+      [[maybe_unused]] StyleType style,
+      [[maybe_unused]] std::string title) const override {
+    content += ' ';
+    return HtmlNode::create_text_raw(std::move(content));
+  }
+  virtual HtmlNode collapsible_item(
+      HtmlNode description, std::optional<HtmlNode> content) const override {
+    if (!content.has_value()) {
+      return description;
+    }
+    content.value().increase_indent = true;
+    return HtmlNode{
+        "",
+        {},
+        std::move(description),
+        std::move(content.value()),
+    };
+  }
+  virtual HtmlNode collapsible_container() const override {
+    return HtmlNode{"", {}};
+  }
+  virtual HtmlNode heading(size_t depth, std::string text) const override {
+    CHECK(depth >= 1);
+    return HtmlNode::create_text_raw(
+        '\n' + std::string(depth + 1, '#') + " " + std::move(text) + '\n');
+  }
+  virtual std::string finalize(HtmlNode content) const override {
+    std::ostringstream out;
+    out << content << '\n';
+    return out.str();
+  }
+};
+
 const std::string HtmlBuilder::css = R"xxx(
 .collapsible_title::before {
   content: '\25B6';
@@ -475,6 +505,11 @@ std::string scope_info_html(ScopeInfo scope_info) {
 
 std::string scope_info_md(ScopeInfo scope_info) {
   MdBuilder builder;
+  return builder.build(std::move(scope_info));
+}
+
+std::string scope_info_str(ScopeInfo scope_info) {
+  StrBuilder builder;
   return builder.build(std::move(scope_info));
 }
 
