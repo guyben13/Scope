@@ -65,9 +65,6 @@ void HtmlNode::print_me(std::ostream& out, Indentation indent) const {
   // The assumption is always:
   // - We enter this function in the right indentation
   // - we leave this function right at the end of the last line (before newline)
-  if (tag == "html") {
-    out << "<!doctype html>\n" << indent;
-  }
   out << '<' << escape_html(tag);
   for (const auto& [key, value] : attributes) {
     out << ' ' << escape_html(key) << "=\"" << escape_html(value) << '"';

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -44,7 +45,18 @@ struct ScopeInfo {
   std::vector<ScopeInfo> children = {};
 
   void fix_self_time_recursive();
-  void sort_children_recursive();
+  template <typename CMP>
+  void sort_children_recursive(CMP&& cmp) {
+    for (ScopeInfo& child : children) {
+      child.sort_children_recursive();
+    }
+    std::sort(children.begin(), children.end(), std::forward<CMP>(cmp));
+  }
+  void sort_children_recursive() {
+    sort_children_recursive([](const ScopeInfo& a, const ScopeInfo& b) {
+      return a.timer.total_time > b.timer.total_time;
+    });
+  }
 
   void merge_with(const ScopeInfo& other);
   void merge_child(const ScopeInfo& other);
