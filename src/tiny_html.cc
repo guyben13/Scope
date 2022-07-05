@@ -1,6 +1,6 @@
 #include "tiny_html.h"
 
-namespace html {
+namespace scope {
 
 std::string escape_html(const std::string& str) {
   std::string res;
@@ -65,9 +65,9 @@ void HtmlNode::print_me(std::ostream& out, Indentation indent) const {
   // The assumption is always:
   // - We enter this function in the right indentation
   // - we leave this function right at the end of the last line (before newline)
-	if (tag == "html") {
-		out << "<!doctype html>\n" << indent;
-	}
+  if (tag == "html") {
+    out << "<!doctype html>\n" << indent;
+  }
   out << '<' << escape_html(tag);
   for (const auto& [key, value] : attributes) {
     out << ' ' << escape_html(key) << "=\"" << escape_html(value) << '"';
@@ -91,4 +91,4 @@ void HtmlNode::print_me(std::ostream& out, Indentation indent) const {
   out << "</" << escape_html(tag) << ">";
 }
 
-}  // namespace html
+}  // namespace scope

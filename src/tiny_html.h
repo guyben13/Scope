@@ -5,31 +5,12 @@
 #include <string>
 #include <vector>
 
-namespace html {
+#include "indent.h"
 
-struct Indentation {
-  size_t indent = 0;
-  size_t per_indent = 2;
-  Indentation operator+(size_t add) const { return {indent + add}; }
-  Indentation operator-(size_t sub) const {
-    if (indent < sub) {
-      return {};
-    }
-    return {indent - sub};
-  }
-
-  friend std::ostream& operator<<(std::ostream& out,
-                                  const Indentation& indent) {
-    size_t num_whitespaces = indent.indent * indent.per_indent;
-    for (size_t i = 0; i < num_whitespaces; ++i) {
-      out << ' ';
-    }
-    return out;
-  }
-};
+namespace scope {
 
 template <typename T, typename... Args>
-void inplace_move_vector_impl(std::vector<T>& res) {}
+void inplace_move_vector_impl(std::vector<T>&) {}
 
 template <typename T, typename... Args>
 void inplace_move_vector_impl(std::vector<T>& res, T&& a, Args&&... args) {
@@ -55,8 +36,9 @@ struct HtmlNode {
   HtmlNode& operator=(HtmlNode&&) = default;
 
   template <typename... Nodes>
-  HtmlNode(std::string _tag, std::map<std::string, std::string> _attributes,
-           Nodes&&... _children)
+  HtmlNode(
+      std::string _tag, std::map<std::string, std::string> _attributes,
+      Nodes&&... _children)
       : tag(std::move(_tag)),
         attributes(std::move(_attributes)),
         children(inplace_move_vector<HtmlNode>(std::move(_children)...)) {
@@ -119,4 +101,4 @@ struct HtmlNode {
   void print_me_as_group(std::ostream& out, Indentation indent) const;
 };
 
-}  // namespace html
+}  // namespace scope

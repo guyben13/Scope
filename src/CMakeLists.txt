@@ -1,4 +1,6 @@
+add_library(indent indent.cc)
 add_library(tiny_html tiny_html.cc)
+target_link_libraries(tiny_html indent)
 add_library(scope_info scope_info.cc)
 target_link_libraries(scope_info tiny_html)
 

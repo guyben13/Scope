@@ -9,12 +9,14 @@ int main() {
       {14, 14},
       {
           {{"f1.cc", "func2", 8}, {12, 4}, {}},
-          {{"f1.cc", "func3", 12},
-           {5, 5},
+          {{nullptr, "group"},
+           {},
            {
                {{"f1.cc", "func4", 12345}, {3, 2}, {}},
+               {{"f1.cc", "func5", 100}, {1'000'000, 2}, {}},
            }},
       }};
+  scope_info.fix_self_time_recursive();
   std::cerr << "Hello, world!\n";
   std::string fname = "/tmp/blah.html";
   std::ofstream(fname) << scope_info_html(scope_info);

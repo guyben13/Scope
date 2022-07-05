@@ -38,12 +38,27 @@ std::string num_with_commas(size_t n) {
   return out.str();
 }
 
+std::string percent_str(double a, double b) {
+  if (b == 0 || abs(1000 * a / b) > std::numeric_limits<int>::max()) {
+    return "<N/A>";
+  }
+  int percent = 100 * a / b;
+  return num_with_commas(percent) + '%';
+}
+
+std::string rate_str(double time, size_t count) {
+  if (count == 0) {
+    return "";
+  }
+  time /= count;
+  return std::to_string(time) + " secs. each";
+}
+
 std::string loc_full_str(const Location& loc) {
   if (!loc.func || !loc.file) {
     return "ERROR";
   }
-  return std::string(loc.file) + ":" + num_with_commas(loc.line) + '\n' +
-         loc.func;
+  return std::string(loc.file) + ":" + num_with_commas(loc.line);
 }
 
 std::string loc_simple_str(const Location& loc) {
@@ -68,7 +83,6 @@ std::string loc_simple_str(const Location& loc) {
 
 }  // namespace
 
-using namespace html;
 namespace {
 
 std::string sec_to_str(double secs) {
@@ -115,6 +129,27 @@ const std::string css = R"xxx(
   list-style-type: none;
 }
 
+.scope_time_percent {
+  color: red;
+}
+
+.scope_location {
+  font-family: monospace;
+  color: black;
+}
+
+.scope_time {
+  color: green;
+}
+
+.scope_count {
+  color: blue;
+}
+
+.scope_group {
+  font-style: italic;
+}
+
 )xxx";
 
 const std::string javascript = R"xxx(
@@ -155,7 +190,35 @@ HtmlNode simple_span(
   return span;
 }
 
-HtmlNode collapsible_list_item(const ScopeInfo& scope_info) {
+HtmlNode title_of(const ScopeInfo& scope_info, double total_time) {
+  if (scope_info.location.func == nullptr) {
+    return simple_span("====", "scope_group", "");
+  }
+  if (scope_info.location.file == nullptr) {
+    return simple_span(scope_info.location.func, "scope_group", "");
+  }
+  std::string location = loc_simple_str(scope_info.location);
+  std::string alt_location =
+      loc_full_str(scope_info.location) + '\n' + scope_info.location.func;
+  std::string time_percent =
+      percent_str(scope_info.timer.total_time, total_time);
+  std::string time_percent_self =
+      percent_str(scope_info.timer.self_time, total_time) + " self";
+  std::string time = sec_to_str(scope_info.timer.total_time);
+  std::string time_self = sec_to_str(scope_info.timer.self_time) + " self";
+  std::string count = "for " + num_with_commas(scope_info.timer.count) + " times";
+  std::string time_per_call =
+      rate_str(scope_info.timer.total_time, scope_info.timer.count);
+  return HtmlNode{
+      "",
+      {},
+      simple_span(time_percent, "scope_time_percent", time_percent_self),
+      simple_span(location, "scope_location", alt_location),
+      simple_span(time, "scope_time", time_self),
+      simple_span(count, "scope_count", time_per_call)};
+}
+
+HtmlNode collapsible_list_item(const ScopeInfo& scope_info, double total_time) {
   const char* class_name = scope_info.children.empty()
                                ? "collapsible_title_empty"
                                : "collapsible_title";
@@ -165,16 +228,14 @@ HtmlNode collapsible_list_item(const ScopeInfo& scope_info) {
       HtmlNode{
           "span",
           {{"class", class_name}},
-          simple_span(
-              loc_simple_str(scope_info.location), "",
-              loc_full_str(scope_info.location)),
+          title_of(scope_info, total_time),
       }};
   if (scope_info.children.empty()) {
     return li;
   }
   HtmlNode content{"ul", {{"class", "no_bullet"}}};
   for (const ScopeInfo& child : scope_info.children) {
-    content.add_child(collapsible_list_item(child));
+    content.add_child(collapsible_list_item(child, total_time));
   }
   li.add_child(std::move(content));
   return li;
@@ -195,7 +256,9 @@ std::string scope_info_html(ScopeInfo scope_info) {
       "h1", "Run took " + sec_to_str(total_time)));
   body.add_child(HtmlNode::create_node_with_text("h2", "Profiling tree"));
   body.add_child(HtmlNode{
-      "ul", {{"class", "no_bullet"}}, collapsible_list_item(scope_info)});
+      "ul",
+      {{"class", "no_bullet"}},
+      collapsible_list_item(scope_info, total_time)});
 
   body.add_child(HtmlNode::create_node_with_text_raw("script", javascript));
   html.add_child(std::move(body));
