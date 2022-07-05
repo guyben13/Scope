@@ -1,0 +1,6 @@
+add_library(tiny_html tiny_html.cc)
+add_library(scope_info scope_info.cc)
+target_link_libraries(scope_info tiny_html)
+
+add_executable(scope_info_test scope_info_test.cc)
+target_link_libraries(scope_info_test scope_info)
