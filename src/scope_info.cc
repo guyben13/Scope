@@ -9,6 +9,12 @@
 
 namespace scope {
 
+#define CHECK(x)                                                           \
+  if (!(x)) {                                                              \
+    std::cerr << __FILE__ << ":" << __LINE__ << ": ERROR! " << #x << "\n"; \
+    exit(0);                                                               \
+  }
+
 void ScopeInfo::fix_self_time_recursive() {
   double children_time = 0.;
   for (ScopeInfo& child : children) {
@@ -29,6 +35,48 @@ void ScopeInfo::sort_children_recursive() {
       });
 }
 
+void ScopeInfo::merge_with(const ScopeInfo& other) {
+  CHECK(location == other.location);
+  timer += other.timer;
+  std::map<Location, size_t> location_to_idx;
+  for (size_t i = 0; i < children.size(); ++i) {
+    location_to_idx[children[i].location] = i;
+  }
+  for (const ScopeInfo& other_child : other.children) {
+    size_t idx = location_to_idx.emplace(other_child.location, children.size())
+                     .first->second;
+    if (idx == children.size()) {
+      children.push_back(other_child);
+    } else {
+      children[idx].merge_with(other_child);
+    }
+  }
+}
+
+void ScopeInfo::merge_child(const ScopeInfo& other) {
+  for (ScopeInfo& child : children) {
+    if (other.location == child.location) {
+      child.merge_with(other);
+      return;
+    }
+  }
+  children.push_back(other);
+}
+
+void ScopeInfo::diff_from(const ScopeInfo& other) {
+  CHECK(location == other.location);
+  timer -= other.timer;
+  std::map<Location, size_t> location_to_idx;
+  for (size_t i = 0; i < children.size(); ++i) {
+    location_to_idx[children[i].location] = i;
+  }
+  for (const ScopeInfo& other_child : other.children) {
+    size_t idx = location_to_idx.emplace(other_child.location, children.size())
+                     .first->second;
+    CHECK(idx < children.size());
+    children[idx].diff_from(other_child);
+  }
+}
 namespace {
 
 std::string num_with_commas(size_t n) {
@@ -206,7 +254,8 @@ HtmlNode title_of(const ScopeInfo& scope_info, double total_time) {
       percent_str(scope_info.timer.self_time, total_time) + " self";
   std::string time = sec_to_str(scope_info.timer.total_time);
   std::string time_self = sec_to_str(scope_info.timer.self_time) + " self";
-  std::string count = "for " + num_with_commas(scope_info.timer.count) + " times";
+  std::string count =
+      "for " + num_with_commas(scope_info.timer.count) + " times";
   std::string time_per_call =
       rate_str(scope_info.timer.total_time, scope_info.timer.count);
   return HtmlNode{
@@ -241,6 +290,13 @@ HtmlNode collapsible_list_item(const ScopeInfo& scope_info, double total_time) {
   return li;
 }
 
+void merge_scopes_recursive(const ScopeInfo& src, ScopeInfo& target) {
+  target.merge_child(src);
+  for (const ScopeInfo& child : src.children) {
+    merge_scopes_recursive(child, target);
+  }
+}
+
 }  // namespace
 
 std::string scope_info_html(ScopeInfo scope_info) {
@@ -259,6 +315,17 @@ std::string scope_info_html(ScopeInfo scope_info) {
       "ul",
       {{"class", "no_bullet"}},
       collapsible_list_item(scope_info, total_time)});
+  body.add_child(HtmlNode::create_node_with_text("h2", "Per function summary"));
+  {
+    ScopeInfo summary{{nullptr, "per-function summary"}};
+    merge_scopes_recursive(scope_info, summary);
+    summary.sort_children_recursive();
+
+    body.add_child(HtmlNode{
+        "ul",
+        {{"class", "no_bullet"}},
+        collapsible_list_item(summary, total_time)});
+  }
 
   body.add_child(HtmlNode::create_node_with_text_raw("script", javascript));
   html.add_child(std::move(body));

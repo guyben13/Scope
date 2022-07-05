@@ -13,7 +13,7 @@ int main() {
            {},
            {
                {{"f1.cc", "func4", 12345}, {3, 2}, {}},
-               {{"f1.cc", "func5", 100}, {1'000'000, 2}, {}},
+               {{"f1.cc", "func2", 8}, {1'000'000, 2}, {}},
            }},
       }};
   scope_info.fix_self_time_recursive();
