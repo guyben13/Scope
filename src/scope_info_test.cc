@@ -17,9 +17,15 @@ int main() {
            }},
       }};
   scope_info.fix_self_time_recursive();
-  std::cerr << "Hello, world!\n";
-  std::string fname = "/tmp/blah.html";
-  std::ofstream(fname) << scope_info_html(scope_info);
-  std::cerr << "Write to " << fname << '\n';
+  {
+    std::string fname = "/tmp/blah.md";
+    std::ofstream(fname) << scope_info_md(scope_info) << '\n';
+    std::cerr << "write to " << fname << '\n';
+  }
+  {
+    std::string fname = "/tmp/blah.html";
+    std::ofstream(fname) << scope_info_html(scope_info);
+    std::cerr << "write to " << fname << '\n';
+  }
   return 0;
 }

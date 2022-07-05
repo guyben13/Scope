@@ -52,5 +52,6 @@ struct ScopeInfo {
 };
 
 std::string scope_info_html(ScopeInfo scope_info);
+std::string scope_info_md(ScopeInfo scope_info);
 
 }  // namespace scope

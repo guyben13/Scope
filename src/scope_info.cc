@@ -302,7 +302,6 @@ void merge_scopes_recursive(const ScopeInfo& src, ScopeInfo& target) {
 std::string scope_info_html(ScopeInfo scope_info) {
   scope_info.sort_children_recursive();
   double total_time = scope_info.timer.total_time;
-  std::ostringstream out;
   HtmlNode html{
       "html<",
       {},
@@ -329,7 +328,93 @@ std::string scope_info_html(ScopeInfo scope_info) {
 
   body.add_child(HtmlNode::create_node_with_text_raw("script", javascript));
   html.add_child(std::move(body));
+  std::ostringstream out;
   out << html;
+  return out.str();
+}
+
+namespace {
+
+HtmlNode simple_span_md(
+    std::string content, std::string style, std::string title) {
+  HtmlNode span = HtmlNode::create_node_with_text("span", std::move(content));
+  if (!style.empty()) {
+    span.attributes["style"] = std::move(style);
+  }
+  if (!title.empty()) {
+    span.attributes["title"] = std::move(title);
+  }
+  return span;
+}
+
+HtmlNode title_of_md(const ScopeInfo& scope_info, double total_time) {
+  if (scope_info.location.func == nullptr) {
+    return simple_span_md("======", "font-style: italic;", "");
+  }
+  if (scope_info.location.file == nullptr) {
+    return simple_span_md(scope_info.location.func, "font-style: italic;", "");
+  }
+  std::string location = loc_simple_str(scope_info.location);
+  std::string alt_location =
+      loc_full_str(scope_info.location) + '\n' + scope_info.location.func;
+  std::string time_percent =
+      percent_str(scope_info.timer.total_time, total_time);
+  std::string time_percent_self =
+      percent_str(scope_info.timer.self_time, total_time) + " self";
+  std::string time = sec_to_str(scope_info.timer.total_time);
+  std::string time_self = sec_to_str(scope_info.timer.self_time) + " self";
+  std::string count =
+      "for " + num_with_commas(scope_info.timer.count) + " times";
+  std::string time_per_call =
+      rate_str(scope_info.timer.total_time, scope_info.timer.count);
+
+  return HtmlNode{
+      "",
+      {},
+      simple_span_md(time_percent, "color:red;", time_percent_self),
+      simple_span_md(
+          location, "font-family:monospace; color:black;", alt_location),
+      simple_span_md(time, "color:green;", time_self),
+      simple_span_md(count, "color:blue;", time_per_call)};
+}
+
+HtmlNode collapsible_md_item(const ScopeInfo& scope_info, double total_time) {
+  HtmlNode title = title_of_md(scope_info, total_time);
+  if (scope_info.children.empty()) {
+    return HtmlNode{"p|",{},std::move(title)};
+  }
+  HtmlNode children{"blockquote", {}};
+  for (const ScopeInfo& child : scope_info.children) {
+    children.add_child(collapsible_md_item(child, total_time));
+  }
+  return HtmlNode{
+      "details|",
+      {},
+      HtmlNode{"summary", {}, std::move(title)},
+      std::move(children)};
+}
+
+}  // namespace
+
+std::string scope_info_md(ScopeInfo scope_info) {
+  scope_info.sort_children_recursive();
+  double total_time = scope_info.timer.total_time;
+  HtmlNode body{"", {}};
+  body.add_child(HtmlNode::create_text_raw(
+      "\n## Run took " + sec_to_str(total_time) + '\n'));
+  body.add_child(HtmlNode::create_text_raw("\n### Profiling Tree\n"));
+  body.add_child(collapsible_md_item(scope_info, total_time));
+  body.add_child(HtmlNode::create_text_raw("\n### Per Function Summary\n"));
+  {
+    ScopeInfo summary{{nullptr, "per-function summary"}};
+    merge_scopes_recursive(scope_info, summary);
+    summary.sort_children_recursive();
+
+    body.add_child(collapsible_md_item(summary, total_time));
+  }
+
+  std::ostringstream out;
+  out << body;
   return out.str();
 }
 
