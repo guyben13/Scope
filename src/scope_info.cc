@@ -90,19 +90,21 @@ std::string sec_to_str(double secs) {
 
 const std::string css = R"xxx(
 .collapsible_title::before {
-  content: '>';
+  content: '\25B6';
   color: blue;
   display: inline-block;
-  transform: rotate(90deg);
+  width: 1em;
+  height: 1em;
 }
 
 .collapsible_title_empty::before {
-  content: '>';
+  content: '\25B6';
   color: lightgray;
+  display: inline-block;
 }
 
-.collapsible_title-closed::before {
-  transform: rotate(0deg);
+.collapsible_title-open::before {
+  transform: rotate(90deg);
 }
 
 .collapsible_hidden {
@@ -121,7 +123,7 @@ const on_click = function() {
   const siblings = this.parentElement.children;
   for (const s of siblings) {
     if (s.classList.contains("collapsible_title")) {
-      s.classList.toggle("collapsible_title-closed");
+      s.classList.toggle("collapsible_title-open");
     } else {
       s.classList.toggle("collapsible_hidden");
     }
@@ -132,7 +134,7 @@ for (const e of collection) {
   const siblings = e.parentElement.children
   for (const s of siblings) {
     if (s.classList.contains("collapsible_title")) {
-      s.classList.add("collapsible_title-closed");
+      s.classList.remove("collapsible_title-closed");
       s.onclick = on_click;
     } else {
       s.classList.add("collapsible_hidden");
